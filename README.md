@@ -1,6 +1,6 @@
 # Task Corkboard
 
-A single-file task board styled like a corkboard with sticky notes. No build step, no dependencies — open `task-corkboard.html` in a browser and it works.
+A single-file task board styled like a corkboard with sticky notes. No build step, no dependencies — open `index.html` in a browser and it works.
 
 ## Features
 
@@ -11,7 +11,7 @@ A single-file task board styled like a corkboard with sticky notes. No build ste
 
 ## Usage
 
-Just open `task-corkboard.html` in any modern browser. No server or install required.
+Just open `index.html` in any modern browser. No server or install required.
 
 - **+ New Task** — add a note to the board
 - **Load CSV** — replace the current board with one from a CSV file
@@ -22,8 +22,18 @@ Just open `task-corkboard.html` in any modern browser. No server or install requ
 ## Current limitations
 
 - Data is stored in `localStorage`, which is local to one browser on one device — it does not sync across devices or browsers, and clearing browser data will erase it. Use CSV export as a backup.
-- Single-user only; there is no concept of accounts or sharing a board with others yet.
+- Single-user only; there is no concept of accounts. If this is deployed to a shared URL, everyone who visits gets their own independent board (scoped to their own browser's `localStorage` for that domain) — boards are not shared or synced between visitors.
+
+## Deploying to Cloudflare Pages
+
+This is a static site, so no build step is required.
+
+1. Push this repo to GitHub (already done if you're reading this from the repo).
+2. In the [Cloudflare dashboard](https://dash.cloudflare.com/), go to **Workers & Pages → Create → Pages → Connect to Git**.
+3. Select this repository and authorize Cloudflare's GitHub App if prompted.
+4. Framework preset: **None**. Build command: leave blank. Build output directory: `/` (repo root).
+5. Click **Save and Deploy**. Cloudflare will give you a `*.pages.dev` URL — every push to `main` redeploys automatically.
 
 ## Roadmap
 
-Deploying this online for multiple people (each with their own private board) is planned but not yet implemented — it will require adding a real backend and accounts, since `localStorage` can't follow a person across devices.
+Real accounts and a shared/synced backend (so a person's board follows them across devices) are not implemented — the current deployment relies on each visitor's own browser storage.
