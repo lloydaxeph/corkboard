@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Corkboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cork-base:#b9905e;
+    --cork-dark:#8a6239;
+    --wood:#5c3d26;
+    --wood-dark:#3d2818;
+    --wood-light:#7a5334;
+    --ink:#3a2a1a;
+    --ink-soft:#5c4632;
+    --paper-yellow:#f7e07f;
+    --paper-yellow-edge:#e8cd5f;
+    --paper-mint:#b9e4c9;
+    --paper-mint-edge:#98cfae;
+    --paper-coral:#f4b3a0;
+    --paper-coral-edge:#e2907a;
+    --paper-sky:#a9d0e8;
+    --paper-sky-edge:#89b7d4;
+    --pin-red:#c0392b;
+    --pin-metal:#9aa0a6;
+    --status-todo:#9aa0a6;
+    --status-progress:#3d7ab8;
+    --status-done:#3a8f5b;
+    --status-canceled:#a94442;
+    --font-hand:'Caveat', cursive;
+    --font-body:'Inter', sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background-color:var(--cork-base);
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.07), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(0,0,0,0.10), transparent 45%),
+      radial-gradient(circle at 30% 80%, rgba(0,0,0,0.08), transparent 40%),
+      radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05), transparent 40%),
+      repeating-radial-gradient(circle at center, rgba(0,0,0,0.05) 0, rgba(0,0,0,0.05) 1px, transparent 1.5px, transparent 7px);
+  }
+
+  header.shelf{
+    background:linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 55%, var(--wood-dark) 100%);
+    box-shadow:0 6px 14px rgba(0,0,0,0.45);
+    padding:18px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    position:sticky;
+    top:0;
+    z-index:20;
+    border-bottom:4px solid rgba(0,0,0,0.3);
+  }
+
+  header.shelf h1{
+    font-family:var(--font-hand);
+    font-weight:700;
+    font-size:2.1rem;
+    color:#f6e9d0;
+    margin:0;
+    letter-spacing:0.5px;
+    text-shadow:0 2px 3px rgba(0,0,0,0.5);
+  }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .toolbar button{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.85rem;
+    color:#3d2818;
+    background:#f6e9d0;
+    border:none;
+    padding:10px 16px;
+    border-radius:4px;
+    cursor:pointer;
+    box-shadow:0 2px 0 rgba(0,0,0,0.35), 0 3px 6px rgba(0,0,0,0.3);
+    transition:transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .toolbar button:hover{transform:translateY(-1px); box-shadow:0 3px 0 rgba(0,0,0,0.35), 0 5px 10px rgba(0,0,0,0.3);}
+  .toolbar button:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,0.35);}
+  .toolbar button:focus-visible, .note :focus-visible, .toolbar input:focus-visible{
+    outline:3px solid #fff;
+    outline-offset:2px;
+  }
+
+  main.corkboard{
+    min-height:calc(100vh - 76px);
+    padding:40px 32px 80px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:34px 28px;
+    align-content:start;
+  }
+
+  .empty{
+    grid-column:1 / -1;
+    text-align:center;
+    font-family:var(--font-hand);
+    font-size:1.8rem;
+    color:rgba(255,255,255,0.85);
+    text-shadow:0 2px 4px rgba(0,0,0,0.4);
+    margin-top:60px;
+  }
+
+  .note{
+    position:relative;
+    border-radius:2px;
+    padding:26px 18px 16px;
+    min-height:140px;
+    box-shadow:3px 6px 12px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.3) inset;
+    transition:box-shadow 0.15s ease, transform 0.1s ease;
+    cursor:grab;
+  }
+  .note.dragging{opacity:0.4;}
+  .note:hover{box-shadow:4px 10px 18px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.3) inset;}
+
+  .note.color-0{background:var(--paper-yellow); border-bottom:6px solid var(--paper-yellow-edge);}
+  .note.color-1{background:var(--paper-mint); border-bottom:6px solid var(--paper-mint-edge);}
+  .note.color-2{background:var(--paper-coral); border-bottom:6px solid var(--paper-coral-edge);}
+  .note.color-3{background:var(--paper-sky); border-bottom:6px solid var(--paper-sky-edge);}
+
+  .pin{
+    position:absolute;
+    top:-11px;
+    left:50%;
+    transform:translateX(-50%);
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #ff6b5b, var(--pin-red) 60%, #7a1d13 100%);
+    box-shadow:0 3px 4px rgba(0,0,0,0.5);
+    z-index:2;
+  }
+
+  .rank-badge{
+    position:absolute;
+    top:8px;
+    left:8px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    background:rgba(255,255,255,0.5);
+    padding:2px 6px;
+    border-radius:10px;
+  }
+
+  .note-delete{
+    position:absolute;
+    top:6px;
+    right:6px;
+    background:none;
+    border:none;
+    font-size:1rem;
+    line-height:1;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:4px 6px;
+    border-radius:4px;
+  }
+  .note-delete:hover{background:rgba(0,0,0,0.08); color:#8a1f1f;}
+
+  .note-title{
+    font-family:var(--font-hand);
+    font-weight:700;
+    font-size:1.5rem;
+    line-height:1.15;
+    color:var(--ink);
+    margin:4px 6px 10px 6px;
+    cursor:text;
+    word-break:break-word;
+  }
+  .note-title:hover{text-decoration:underline dotted;}
+
+  .progress-wrap{
+    margin:0 4px 12px;
+  }
+  .progress-label{
+    font-size:0.72rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+    display:flex;
+    justify-content:space-between;
+  }
+  .progress-track{
+    height:8px;
+    border-radius:5px;
+    background:rgba(0,0,0,0.15);
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--status-done), #6cbf8b);
+    border-radius:5px;
+    transition:width 0.2s ease;
+  }
+
+  .subtasks-toggle{
+    background:none;
+    border:none;
+    font-size:0.75rem;
+    font-weight:700;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:2px 4px;
+    margin:0 2px 6px;
+  }
+
+  .subitem-list{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    margin:0 2px 10px;
+  }
+
+  .subitem{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:rgba(255,255,255,0.45);
+    border-radius:4px;
+    padding:4px 6px;
+    font-size:0.85rem;
+  }
+
+  .status-pill{
+    border:none;
+    border-radius:10px;
+    font-size:0.65rem;
+    font-weight:700;
+    padding:3px 8px;
+    color:#fff;
+    cursor:pointer;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .status-pill.TODO{background:var(--status-todo);}
+  .status-pill.IN_PROGRESS{background:var(--status-progress);}
+  .status-pill.DONE{background:var(--status-done);}
+  .status-pill.CANCELED{background:var(--status-canceled);}
+
+  .subitem-text{
+    flex:1;
+    cursor:text;
+    word-break:break-word;
+  }
+  .subitem-text.DONE{text-decoration:line-through; opacity:0.75;}
+  .subitem-text.CANCELED{text-decoration:line-through; opacity:0.55;}
+
+  .subitem-delete{
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    cursor:pointer;
+    font-size:0.85rem;
+    padding:0 3px;
+    flex-shrink:0;
+  }
+  .subitem-delete:hover{color:#8a1f1f;}
+
+  .add-subitem-form{
+    display:flex;
+    gap:5px;
+    margin:4px 2px 0;
+  }
+  .add-subitem-form input{
+    flex:1;
+    min-width:0;
+    border:1px solid rgba(0,0,0,0.2);
+    border-radius:4px;
+    padding:5px 7px;
+    font-size:0.82rem;
+    font-family:var(--font-body);
+    background:rgba(255,255,255,0.7);
+  }
+  .add-subitem-form button{
+    border:none;
+    border-radius:4px;
+    background:var(--wood);
+    color:#f6e9d0;
+    font-weight:600;
+    font-size:0.78rem;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .add-subitem-form button:hover{background:var(--wood-dark);}
+
+  .new-note-card{
+    background:#fdf6e3;
+    border:2px dashed var(--wood);
+    border-radius:4px;
+    padding:20px;
+    min-height:140px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    justify-content:center;
+  }
+  .new-note-card input{
+    font-family:var(--font-hand);
+    font-size:1.3rem;
+    padding:8px 10px;
+    border:1px solid rgba(0,0,0,0.25);
+    border-radius:4px;
+    background:#fff;
+  }
+  .new-note-actions{display:flex; gap:8px;}
+  .new-note-actions button{
+    border:none;
+    border-radius:4px;
+    padding:8px 14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:var(--font-body);
+    font-size:0.85rem;
+  }
+  .new-note-actions .save-btn{background:var(--wood); color:#f6e9d0;}
+  .new-note-actions .save-btn:hover{background:var(--wood-dark);}
+  .new-note-actions .cancel-btn{background:transparent; color:var(--ink-soft); border:1px solid rgba(0,0,0,0.25);}
+
+  @media (max-width:520px){
+    header.shelf{padding:14px 16px;}
+    header.shelf h1{font-size:1.6rem;}
+    main.corkboard{padding:24px 16px 60px; grid-template-columns:1fr;}
+    .toolbar button{padding:9px 12px; font-size:0.8rem;}
+  }
+</style>
+</head>
+<body>
+
+<header class="shelf">
+  <h1>📌 Task Corkboard</h1>
+  <div class="toolbar">
+    <button id="addTaskBtn" type="button">+ New Task</button>
+    <button id="loadBtn" type="button">Load CSV</button>
+    <button id="exportBtn" type="button">Export CSV</button>
+    <input type="file" id="fileInput" accept=".csv" hidden>
+  </div>
+</header>
+
+<main class="corkboard" id="board"></main>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- state ---------- */
+  var tasks = [];               // {id,title,colorIndex,rotation,expanded,subitems:[{id,title,status}]}
+  var showNewNoteForm = false;
+  var STATUS_CYCLE = ["TODO","IN_PROGRESS","DONE","CANCELED"];
+  var STATUS_LABEL = {TODO:"To do", IN_PROGRESS:"In progress", DONE:"Done", CANCELED:"Canceled"};
+  var STORAGE_KEY = "task-corkboard:v1";
+
+  function uid(){
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  /* ---------- persistence (localStorage) ---------- */
+  function saveState(){
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (err) {
+      console.warn("Task Corkboard: couldn't save to localStorage.", err);
+    }
+  }
+
+  function sanitizeSubitem(s){
+    if (!s || typeof s.id !== "string" || typeof s.title !== "string") return null;
+    return {
+      id: s.id,
+      title: s.title,
+      status: STATUS_CYCLE.indexOf(s.status) !== -1 ? s.status : "TODO"
+    };
+  }
+
+  function sanitizeTask(t){
+    if (!t || typeof t.id !== "string" || typeof t.title !== "string") return null;
+    return {
+      id: t.id,
+      title: t.title,
+      colorIndex: typeof t.colorIndex === "number" ? t.colorIndex : 0,
+      rotation: (typeof t.rotation === "number" || typeof t.rotation === "string") ? t.rotation : 0,
+      expanded: !!t.expanded,
+      subitems: Array.isArray(t.subitems) ? t.subitems.map(sanitizeSubitem).filter(Boolean) : []
+    };
+  }
+
+  function loadState(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map(sanitizeTask).filter(Boolean);
+    } catch (err) {
+      console.warn("Task Corkboard: couldn't load saved board, starting fresh.", err);
+      return [];
+    }
+  }
+
+  function escapeHtml(str){
+    return String(str == null ? "" : str)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+
+  function computeProgress(task){
+    var total = task.subitems.length;
+    var done = task.subitems.filter(function(s){ return s.status === "DONE"; }).length;
+    var pct = total === 0 ? 0 : Math.round((done/total) * 100);
+    return {done: done, total: total, pct: pct};
+  }
+
+  function findTask(id){
+    for (var i=0;i<tasks.length;i++) if (tasks[i].id === id) return tasks[i];
+    return null;
+  }
+
+  /* ---------- rendering ---------- */
+  function render(){
+    var board = document.getElementById('board');
+    var html = "";
+
+    if (showNewNoteForm){
+      html += ''
+        + '<div class="new-note-card">'
+        +   '<input type="text" id="newNoteInput" placeholder="What needs doing?" autofocus>'
+        +   '<div class="new-note-actions">'
+        +     '<button type="button" class="save-btn" data-action="confirm-new-task">Pin it</button>'
+        +     '<button type="button" class="cancel-btn" data-action="cancel-new-task">Cancel</button>'
+        +   '</div>'
+        + '</div>';
+    }
+
+    if (tasks.length === 0 && !showNewNoteForm){
+      html += '<p class="empty">The board is empty — pin your first task to get started.</p>';
+    }
+
+    tasks.forEach(function(task, index){
+      var progress = computeProgress(task);
+      var rot = task.rotation;
+      var subHtml = "";
+
+      if (task.expanded){
+        subHtml += '<div class="subitem-list">';
+        task.subitems.forEach(function(sub){
+          subHtml += ''
+            + '<div class="subitem" data-sub-id="' + sub.id + '">'
+            +   '<button type="button" class="status-pill ' + sub.status + '" data-action="cycle-status" data-task-id="' + task.id + '" data-sub-id="' + sub.id + '">' + STATUS_LABEL[sub.status] + '</button>'
+            +   '<span class="subitem-text ' + sub.status + '" data-action="edit-subitem" data-task-id="' + task.id + '" data-sub-id="' + sub.id + '" title="Click to edit">' + escapeHtml(sub.title) + '</span>'
+            +   '<button type="button" class="subitem-delete" data-action="delete-subitem" data-task-id="' + task.id + '" data-sub-id="' + sub.id + '" title="Delete subtask">✕</button>'
+            + '</div>';
+        });
+        subHtml += '</div>';
+        subHtml += ''
+          + '<form class="add-subitem-form" data-action="add-subitem-form" data-task-id="' + task.id + '">'
+          +   '<input type="text" placeholder="Add a subtask…" data-role="new-subitem-input">'
+          +   '<button type="submit">Add</button>'
+          + '</form>';
+      }
+
+      html += ''
+        + '<div class="note color-' + task.colorIndex + '" draggable="true" data-task-id="' + task.id + '" style="transform:rotate(' + rot + 'deg);">'
+        +   '<span class="pin"></span>'
+        +   '<span class="rank-badge">#' + (index+1) + '</span>'
+        +   '<button type="button" class="note-delete" data-action="delete-task" data-task-id="' + task.id + '" title="Delete task">🗑</button>'
+        +   '<div class="note-title" data-action="edit-task-title" data-task-id="' + task.id + '" title="Click to edit">' + escapeHtml(task.title) + '</div>'
+        +   '<div class="progress-wrap">'
+        +     '<div class="progress-label"><span>' + (progress.total ? (progress.done + '/' + progress.total + ' done') : 'No subtasks yet') + '</span><span>' + progress.pct + '%</span></div>'
+        +     '<div class="progress-track"><div class="progress-fill" style="width:' + progress.pct + '%;"></div></div>'
+        +   '</div>'
+        +   '<button type="button" class="subtasks-toggle" data-action="toggle-expand" data-task-id="' + task.id + '">' + (task.expanded ? '▾ Hide subtasks' : '▸ Show subtasks (' + task.subitems.length + ')') + '</button>'
+        +   subHtml
+        + '</div>';
+    });
+
+    board.innerHTML = html;
+    saveState();
+
+    if (showNewNoteForm){
+      var input = document.getElementById('newNoteInput');
+      if (input){
+        input.focus();
+        input.addEventListener('keydown', function(e){
+          if (e.key === 'Enter'){ e.preventDefault(); confirmNewTask(); }
+          if (e.key === 'Escape'){ e.preventDefault(); showNewNoteForm=false; render(); }
+        });
+      }
+    }
+  }
+
+  /* ---------- task/subitem mutations ---------- */
+  function confirmNewTask(){
+    var input = document.getElementById('newNoteInput');
+    var title = input ? input.value.trim() : "";
+    if (!title){ showNewNoteForm = false; render(); return; }
+    var colorIndex = tasks.length % 4;
+    var rotation = (Math.random() * 4 - 2).toFixed(1);
+    tasks.push({
+      id: uid(),
+      title: title,
+      colorIndex: colorIndex,
+      rotation: rotation,
+      expanded: true,
+      subitems: []
+    });
+    showNewNoteForm = false;
+    render();
+  }
+
+  function deleteTask(id){
+    var task = findTask(id);
+    if (!task) return;
+    var msg = task.subitems.length
+      ? 'Delete "' + task.title + '" and its ' + task.subitems.length + ' subtask(s)?'
+      : 'Delete "' + task.title + '"?';
+    if (!confirm(msg)) return;
+    tasks = tasks.filter(function(t){ return t.id !== id; });
+    render();
+  }
+
+  function editTaskTitle(id){
+    var task = findTask(id);
+    if (!task) return;
+    var next = prompt("Edit task title:", task.title);
+    if (next === null) return;
+    next = next.trim();
+    if (next) task.title = next;
+    render();
+  }
+
+  function toggleExpand(id){
+    var task = findTask(id);
+    if (!task) return;
+    task.expanded = !task.expanded;
+    render();
+  }
+
+  function addSubitem(taskId, title){
+    var task = findTask(taskId);
+    if (!task || !title.trim()) return;
+    task.subitems.push({ id: uid(), title: title.trim(), status: "TODO" });
+    render();
+  }
+
+  function cycleStatus(taskId, subId){
+    var task = findTask(taskId);
+    if (!task) return;
+    var sub = task.subitems.find(function(s){ return s.id === subId; });
+    if (!sub) return;
+    var idx = STATUS_CYCLE.indexOf(sub.status);
+    sub.status = STATUS_CYCLE[(idx+1) % STATUS_CYCLE.length];
+    render();
+  }
+
+  function editSubitem(taskId, subId){
+    var task = findTask(taskId);
+    if (!task) return;
+    var sub = task.subitems.find(function(s){ return s.id === subId; });
+    if (!sub) return;
+    var next = prompt("Edit subtask:", sub.title);
+    if (next === null) return;
+    next = next.trim();
+    if (next) sub.title = next;
+    render();
+  }
+
+  function deleteSubitem(taskId, subId){
+    var task = findTask(taskId);
+    if (!task) return;
+    task.subitems = task.subitems.filter(function(s){ return s.id !== subId; });
+    render();
+  }
+
+  /* ---------- drag & drop reorder (priority) ---------- */
+  var draggedId = null;
+
+  function onDragStart(e){
+    var note = e.target.closest('.note');
+    if (!note) return;
+    draggedId = note.dataset.taskId;
+    note.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onDragEnd(e){
+    var note = e.target.closest('.note');
+    if (note) note.classList.remove('dragging');
+    draggedId = null;
+  }
+
+  function onDragOver(e){
+    e.preventDefault();
+  }
+
+  function onDrop(e){
+    e.preventDefault();
+    var targetNote = e.target.closest('.note');
+    if (!targetNote || !draggedId) return;
+    var targetId = targetNote.dataset.taskId;
+    if (targetId === draggedId) return;
+
+    var rect = targetNote.getBoundingClientRect();
+    var isAfter = (e.clientY - rect.top) > (rect.height / 2);
+
+    var fromIndex = tasks.findIndex(function(t){ return t.id === draggedId; });
+    if (fromIndex === -1) return;
+    var moved = tasks.splice(fromIndex, 1)[0];
+    var toIndex = tasks.findIndex(function(t){ return t.id === targetId; });
+    if (toIndex === -1) toIndex = tasks.length;
+    if (isAfter) toIndex += 1;
+    tasks.splice(toIndex, 0, moved);
+    render();
+  }
+
+  /* ---------- CSV export ---------- */
+  function csvEscape(value){
+    var str = String(value == null ? "" : value);
+    if (/[",\n]/.test(str)){
+      str = '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function exportCSV(){
+    var rows = [["Type","ID","ParentID","Title","Status","Order"]];
+    tasks.forEach(function(task, tIndex){
+      rows.push(["TASK", task.id, "", task.title, "", tIndex]);
+      task.subitems.forEach(function(sub, sIndex){
+        rows.push(["SUBITEM", sub.id, task.id, sub.title, sub.status, sIndex]);
+      });
+    });
+    var csv = rows.map(function(row){
+      return row.map(csvEscape).join(",");
+    }).join("\r\n");
+
+    var blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    var ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+    a.download = "task-corkboard-" + ts + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ---------- CSV import (RFC4180-ish parser) ---------- */
+  function parseCSV(text){
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuotes = false;
+    var i = 0;
+    var len = text.length;
+
+    while (i < len){
+      var ch = text[i];
+
+      if (inQuotes){
+        if (ch === '"'){
+          if (text[i+1] === '"'){ field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        } else {
+          field += ch; i++; continue;
+        }
+      } else {
+        if (ch === '"'){ inQuotes = true; i++; continue; }
+        if (ch === ','){ row.push(field); field = ""; i++; continue; }
+        if (ch === '\r'){ i++; continue; }
+        if (ch === '\n'){ row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+        field += ch; i++; continue;
+      }
+    }
+    if (field.length > 0 || row.length > 0){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return !(r.length === 1 && r[0] === ""); });
+  }
+
+  function importCSV(text){
+    var rows = parseCSV(text);
+    if (!rows.length) { alert("That CSV looks empty."); return; }
+
+    var header = rows[0].map(function(h){ return h.trim().toLowerCase(); });
+    var idx = {
+      type: header.indexOf("type"),
+      id: header.indexOf("id"),
+      parentId: header.indexOf("parentid"),
+      title: header.indexOf("title"),
+      status: header.indexOf("status"),
+      order: header.indexOf("order")
+    };
+    if (idx.type === -1 || idx.title === -1){
+      alert("This CSV doesn't match the expected format (needs Type, ID, ParentID, Title, Status, Order columns).");
+      return;
+    }
+
+    var taskRows = [];
+    var subRowsByParent = {};
+
+    for (var r = 1; r < rows.length; r++){
+      var cells = rows[r];
+      if (!cells || cells.length === 0) continue;
+      var type = (cells[idx.type] || "").trim().toUpperCase();
+      var title = (cells[idx.title] || "").trim();
+      if (!title) continue;
+
+      if (type === "TASK"){
+        taskRows.push({
+          id: (cells[idx.id] || uid()).trim() || uid(),
+          title: title,
+          order: parseInt(cells[idx.order], 10)
+        });
+      } else if (type === "SUBITEM"){
+        var parentId = (cells[idx.parentId] || "").trim();
+        var status = (cells[idx.status] || "TODO").trim().toUpperCase();
+        if (STATUS_CYCLE.indexOf(status) === -1) status = "TODO";
+        if (!subRowsByParent[parentId]) subRowsByParent[parentId] = [];
+        subRowsByParent[parentId].push({
+          id: (cells[idx.id] || uid()).trim() || uid(),
+          title: title,
+          status: status,
+          order: parseInt(cells[idx.order], 10)
+        });
+      }
+    }
+
+    if (taskRows.length === 0){
+      alert("No tasks found in that CSV.");
+      return;
+    }
+
+    taskRows.sort(function(a,b){
+      var oa = isNaN(a.order) ? 0 : a.order;
+      var ob = isNaN(b.order) ? 0 : b.order;
+      return oa - ob;
+    });
+
+    var newTasks = taskRows.map(function(t, i){
+      var subs = (subRowsByParent[t.id] || []).slice().sort(function(a,b){
+        var oa = isNaN(a.order) ? 0 : a.order;
+        var ob = isNaN(b.order) ? 0 : b.order;
+        return oa - ob;
+      }).map(function(s){
+        return { id: s.id, title: s.title, status: s.status };
+      });
+      return {
+        id: t.id,
+        title: t.title,
+        colorIndex: i % 4,
+        rotation: (Math.random() * 4 - 2).toFixed(1),
+        expanded: true,
+        subitems: subs
+      };
+    });
+
+    if (tasks.length > 0){
+      if (!confirm("Loading this CSV will replace your current board (" + tasks.length + " task(s)). Continue?")) return;
+    }
+
+    tasks = newTasks;
+    render();
+  }
+
+  /* ---------- event delegation ---------- */
+  var board = document.getElementById('board');
+
+  board.addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.dataset.action;
+    var taskId = el.dataset.taskId;
+    var subId = el.dataset.subId;
+
+    if (action === 'confirm-new-task') confirmNewTask();
+    else if (action === 'cancel-new-task'){ showNewNoteForm = false; render(); }
+    else if (action === 'delete-task') deleteTask(taskId);
+    else if (action === 'edit-task-title') editTaskTitle(taskId);
+    else if (action === 'toggle-expand') toggleExpand(taskId);
+    else if (action === 'cycle-status') cycleStatus(taskId, subId);
+    else if (action === 'edit-subitem') editSubitem(taskId, subId);
+    else if (action === 'delete-subitem') deleteSubitem(taskId, subId);
+  });
+
+  board.addEventListener('submit', function(e){
+    var form = e.target.closest('[data-action="add-subitem-form"]');
+    if (!form) return;
+    e.preventDefault();
+    var taskId = form.dataset.taskId;
+    var input = form.querySelector('[data-role="new-subitem-input"]');
+    var title = input ? input.value : "";
+    addSubitem(taskId, title);
+  });
+
+  board.addEventListener('dragstart', onDragStart);
+  board.addEventListener('dragend', onDragEnd);
+  board.addEventListener('dragover', onDragOver);
+  board.addEventListener('drop', onDrop);
+
+  document.getElementById('addTaskBtn').addEventListener('click', function(){
+    showNewNoteForm = true;
+    render();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    if (tasks.length === 0){ alert("Nothing to export yet — add a task first."); return; }
+    exportCSV();
+  });
+
+  var fileInput = document.getElementById('fileInput');
+  document.getElementById('loadBtn').addEventListener('click', function(){
+    fileInput.value = "";
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){ importCSV(evt.target.result); };
+    reader.onerror = function(){ alert("Couldn't read that file."); };
+    reader.readAsText(file);
+  });
+
+  /* ---------- init ---------- */
+  tasks = loadState();
+  render();
+})();
+</script>
+</body>
+</html>
