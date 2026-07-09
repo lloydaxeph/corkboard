@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Task Corkboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📌</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -189,6 +190,19 @@
   }
   .note-title:hover{text-decoration:underline dotted;}
 
+  .note-desc{
+    font-family:var(--font-body);
+    font-size:0.85rem;
+    line-height:1.35;
+    color:var(--ink-soft);
+    margin:0 6px 12px 6px;
+    cursor:text;
+    word-break:break-word;
+    white-space:pre-wrap;
+  }
+  .note-desc:hover{text-decoration:underline dotted;}
+  .note-desc-placeholder{font-style:italic; opacity:0.65;}
+
   .progress-wrap{
     margin:0 4px 12px;
   }
@@ -363,7 +377,7 @@
   "use strict";
 
   /* ---------- state ---------- */
-  var tasks = [];               // {id,title,colorIndex,rotation,expanded,subitems:[{id,title,status}]}
+  var tasks = [];               // {id,title,description,colorIndex,rotation,expanded,subitems:[{id,title,status}]}
   var showNewNoteForm = false;
   var STATUS_CYCLE = ["TODO","IN_PROGRESS","DONE","CANCELED"];
   var STATUS_LABEL = {TODO:"To do", IN_PROGRESS:"In progress", DONE:"Done", CANCELED:"Canceled"};
@@ -397,6 +411,7 @@
     return {
       id: t.id,
       title: t.title,
+      description: typeof t.description === "string" ? t.description : "",
       colorIndex: typeof t.colorIndex === "number" ? t.colorIndex : 0,
       rotation: (typeof t.rotation === "number" || typeof t.rotation === "string") ? t.rotation : 0,
       expanded: !!t.expanded,
@@ -484,6 +499,7 @@
         +   '<span class="rank-badge">#' + (index+1) + '</span>'
         +   '<button type="button" class="note-delete" data-action="delete-task" data-task-id="' + task.id + '" title="Delete task">🗑</button>'
         +   '<div class="note-title" data-action="edit-task-title" data-task-id="' + task.id + '" title="Click to edit">' + escapeHtml(task.title) + '</div>'
+        +   '<div class="note-desc" data-action="edit-task-desc" data-task-id="' + task.id + '" title="Click to edit">' + (task.description ? escapeHtml(task.description) : '<span class="note-desc-placeholder">Add a description…</span>') + '</div>'
         +   '<div class="progress-wrap">'
         +     '<div class="progress-label"><span>' + (progress.total ? (progress.done + '/' + progress.total + ' done') : 'No subtasks yet') + '</span><span>' + progress.pct + '%</span></div>'
         +     '<div class="progress-track"><div class="progress-fill" style="width:' + progress.pct + '%;"></div></div>'
@@ -518,6 +534,7 @@
     tasks.push({
       id: uid(),
       title: title,
+      description: "",
       colorIndex: colorIndex,
       rotation: rotation,
       expanded: true,
@@ -545,6 +562,15 @@
     if (next === null) return;
     next = next.trim();
     if (next) task.title = next;
+    render();
+  }
+
+  function editTaskDescription(id){
+    var task = findTask(id);
+    if (!task) return;
+    var next = prompt("Edit description:", task.description || "");
+    if (next === null) return;
+    task.description = next.trim();
     render();
   }
 
@@ -642,11 +668,11 @@
   }
 
   function exportCSV(){
-    var rows = [["Type","ID","ParentID","Title","Status","Order"]];
+    var rows = [["Type","ID","ParentID","Title","Status","Order","Description"]];
     tasks.forEach(function(task, tIndex){
-      rows.push(["TASK", task.id, "", task.title, "", tIndex]);
+      rows.push(["TASK", task.id, "", task.title, "", tIndex, task.description || ""]);
       task.subitems.forEach(function(sub, sIndex){
-        rows.push(["SUBITEM", sub.id, task.id, sub.title, sub.status, sIndex]);
+        rows.push(["SUBITEM", sub.id, task.id, sub.title, sub.status, sIndex, ""]);
       });
     });
     var csv = rows.map(function(row){
@@ -707,7 +733,8 @@
       parentId: header.indexOf("parentid"),
       title: header.indexOf("title"),
       status: header.indexOf("status"),
-      order: header.indexOf("order")
+      order: header.indexOf("order"),
+      description: header.indexOf("description")
     };
     if (idx.type === -1 || idx.title === -1){
       alert("This CSV doesn't match the expected format (needs Type, ID, ParentID, Title, Status, Order columns).");
@@ -728,6 +755,7 @@
         taskRows.push({
           id: (cells[idx.id] || uid()).trim() || uid(),
           title: title,
+          description: idx.description !== -1 ? (cells[idx.description] || "").trim() : "",
           order: parseInt(cells[idx.order], 10)
         });
       } else if (type === "SUBITEM"){
@@ -766,6 +794,7 @@
       return {
         id: t.id,
         title: t.title,
+        description: t.description || "",
         colorIndex: i % 4,
         rotation: (Math.random() * 4 - 2).toFixed(1),
         expanded: true,
@@ -795,6 +824,7 @@
     else if (action === 'cancel-new-task'){ showNewNoteForm = false; render(); }
     else if (action === 'delete-task') deleteTask(taskId);
     else if (action === 'edit-task-title') editTaskTitle(taskId);
+    else if (action === 'edit-task-desc') editTaskDescription(taskId);
     else if (action === 'toggle-expand') toggleExpand(taskId);
     else if (action === 'cycle-status') cycleStatus(taskId, subId);
     else if (action === 'edit-subitem') editSubitem(taskId, subId);
