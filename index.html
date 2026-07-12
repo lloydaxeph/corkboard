@@ -350,11 +350,28 @@
   .new-note-actions .save-btn:hover{background:var(--wood-dark);}
   .new-note-actions .cancel-btn{background:transparent; color:var(--ink-soft); border:1px solid rgba(0,0,0,0.25);}
 
+  .watermark{
+    position:fixed;
+    right:12px;
+    bottom:8px;
+    z-index:30;
+    font-family:var(--font-body);
+    font-size:0.7rem;
+  }
+  .watermark a{
+    color:rgba(255,255,255,0.75);
+    text-shadow:0 1px 2px rgba(0,0,0,0.6);
+    text-decoration:none;
+  }
+  .watermark a:hover{color:#fff; text-decoration:underline;}
+  .watermark a:focus-visible{outline:2px solid #fff; outline-offset:2px;}
+
   @media (max-width:520px){
     header.shelf{padding:14px 16px;}
     header.shelf h1{font-size:1.6rem;}
     main.corkboard{padding:24px 16px 60px; grid-template-columns:1fr;}
     .toolbar button{padding:9px 12px; font-size:0.8rem;}
+    .watermark{font-size:0.62rem; right:8px; bottom:6px;}
   }
 </style>
 </head>
@@ -371,6 +388,8 @@
 </header>
 
 <main class="corkboard" id="board"></main>
+
+<footer class="watermark"><a href="https://lloydaxeph.github.io/" target="_blank" rel="noopener noreferrer">© 2026 Axe Technologies. All rights reserved.</a></footer>
 
 <script>
 (function(){
