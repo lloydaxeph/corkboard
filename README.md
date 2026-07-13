@@ -2,6 +2,8 @@
 
 A single-file task board styled like a corkboard with sticky notes. No build step, no dependencies — open `index.html` in a browser and it works.
 
+<img width="1235" height="597" alt="image" src="https://github.com/user-attachments/assets/f89b7852-6f15-4503-9a60-ba3f5f4a3f98" />
+
 ## Features
 
 - Add, edit, delete, and drag-to-reorder tasks ("notes")
