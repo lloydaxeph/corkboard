@@ -178,6 +178,29 @@
   }
   .note-delete:hover{background:rgba(0,0,0,0.08); color:#8a1f1f;}
 
+  .color-picker{
+    position:absolute;
+    top:8px;
+    right:32px;
+    display:flex;
+    gap:4px;
+    z-index:2;
+  }
+  .color-swatch{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    border:2px solid rgba(0,0,0,0.15);
+    cursor:pointer;
+    padding:0;
+  }
+  .color-swatch.active{border-color:var(--ink);}
+  .color-swatch:focus-visible{outline:2px solid #fff; outline-offset:1px;}
+  .color-swatch.swatch-0{background:var(--paper-yellow);}
+  .color-swatch.swatch-1{background:var(--paper-mint);}
+  .color-swatch.swatch-2{background:var(--paper-coral);}
+  .color-swatch.swatch-3{background:var(--paper-sky);}
+
   .note-title{
     font-family:var(--font-hand);
     font-weight:700;
@@ -383,6 +406,7 @@
     <button id="addTaskBtn" type="button">+ New Task</button>
     <button id="loadBtn" type="button">Load CSV</button>
     <button id="exportBtn" type="button">Export CSV</button>
+    <button id="clearBtn" type="button">Clear Board</button>
     <input type="file" id="fileInput" accept=".csv" hidden>
   </div>
 </header>
@@ -512,10 +536,17 @@
           + '</form>';
       }
 
+      var colorHtml = '<div class="color-picker">';
+      for (var c=0;c<4;c++){
+        colorHtml += '<button type="button" class="color-swatch swatch-' + c + (c===task.colorIndex ? ' active' : '') + '" data-action="set-color" data-task-id="' + task.id + '" data-color="' + c + '" title="Change note color" aria-label="Set note color ' + (c+1) + '"></button>';
+      }
+      colorHtml += '</div>';
+
       html += ''
         + '<div class="note color-' + task.colorIndex + '" draggable="true" data-task-id="' + task.id + '" style="transform:rotate(' + rot + 'deg);">'
         +   '<span class="pin"></span>'
         +   '<span class="rank-badge">#' + (index+1) + '</span>'
+        +   colorHtml
         +   '<button type="button" class="note-delete" data-action="delete-task" data-task-id="' + task.id + '" title="Delete task">🗑</button>'
         +   '<div class="note-title" data-action="edit-task-title" data-task-id="' + task.id + '" title="Click to edit">' + escapeHtml(task.title) + '</div>'
         +   '<div class="note-desc" data-action="edit-task-desc" data-task-id="' + task.id + '" title="Click to edit">' + (task.description ? escapeHtml(task.description) : '<span class="note-desc-placeholder">Add a description…</span>') + '</div>'
@@ -550,7 +581,7 @@
     if (!title){ showNewNoteForm = false; render(); return; }
     var colorIndex = tasks.length % 4;
     var rotation = (Math.random() * 4 - 2).toFixed(1);
-    tasks.push({
+    tasks.unshift({
       id: uid(),
       title: title,
       description: "",
@@ -560,6 +591,13 @@
       subitems: []
     });
     showNewNoteForm = false;
+    render();
+  }
+
+  function clearBoard(){
+    if (tasks.length === 0) return;
+    if (!confirm("Clear the entire board? This will delete all " + tasks.length + " task(s) and can't be undone.")) return;
+    tasks = [];
     render();
   }
 
@@ -590,6 +628,15 @@
     var next = prompt("Edit description:", task.description || "");
     if (next === null) return;
     task.description = next.trim();
+    render();
+  }
+
+  function setTaskColor(id, colorIndex){
+    var task = findTask(id);
+    if (!task) return;
+    var idx = parseInt(colorIndex, 10);
+    if (isNaN(idx) || idx < 0 || idx > 3) return;
+    task.colorIndex = idx;
     render();
   }
 
@@ -842,6 +889,7 @@
     if (action === 'confirm-new-task') confirmNewTask();
     else if (action === 'cancel-new-task'){ showNewNoteForm = false; render(); }
     else if (action === 'delete-task') deleteTask(taskId);
+    else if (action === 'set-color') setTaskColor(taskId, el.dataset.color);
     else if (action === 'edit-task-title') editTaskTitle(taskId);
     else if (action === 'edit-task-desc') editTaskDescription(taskId);
     else if (action === 'toggle-expand') toggleExpand(taskId);
@@ -874,6 +922,8 @@
     if (tasks.length === 0){ alert("Nothing to export yet — add a task first."); return; }
     exportCSV();
   });
+
+  document.getElementById('clearBtn').addEventListener('click', clearBoard);
 
   var fileInput = document.getElementById('fileInput');
   document.getElementById('loadBtn').addEventListener('click', function(){
